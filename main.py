@@ -2,6 +2,20 @@ from tkinter import *
 from tkinter import messagebox
 import random
 import pyperclip
+import json
+
+
+# ---------------------------- FIND PASSWORD  ------------------------------- #
+def find_password():
+    try:
+        with open("passwords.json") as data:
+            pw = json.load(data)
+            pw = {k.lower(): v for k, v in pw.items()}
+            if website_input.get().lower() in pw:
+                messagebox.showinfo(title=website_input.get().title(),
+                                    message=f"E-mail: {pw[website_input.get().lower()]['email']}\nPassword: {pw[website_input.get().lower()]['password']}")
+    except FileNotFoundError:
+        messagebox.showerror(title="Error", message="No details for the website exists")
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -23,26 +37,35 @@ def generate_password():
 
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def save_password():
+    new_data = {
+        website_input.get(): {
+            "email": username_input.get(),
+            "password": password_input.get(),
+        }
+    }
     if website_input.get() == "" or password_input.get() == "" or username_input.get() == "":
         messagebox.showerror(title="Error", message="Don't leave any fields empty")
-    else:
-        is_ok = messagebox.askokcancel(title=website_input.get(),
-                                       message=f"These are the details entered: \nE-mail: {username_input.get()} \nPassword: {password_input.get()} \nDo you want to save?")
-        if is_ok:
-            with open("passwords.txt", "r") as pw_read:
-                content = pw_read.read()
-                if website_input.get() in content:
-                    if username_input.get() in content:
-                        return None
-                    else:
-                        with open("passwords.txt", "a") as pw:
-                            pw.writelines(f"{website_input.get()} | {username_input.get()} | {password_input.get()}\n")
-                else:
-                    with open("passwords.txt", "a") as pw:
-                        pw.writelines(f"{website_input.get()} | {username_input.get()} | {password_input.get()}\n")
-                website_input.delete(0, "end")
-                password_input.delete(0, "end")
-                website_input.focus()
+    if website_input.get() != "" and password_input.get() != "" and username_input.get() != "":
+        try:
+            with open("passwords.json", "r") as pw_read:
+                content = json.load(pw_read)
+            if website_input.get() in content:
+                if username_input.get() in content[website_input.get()]["email"]:
+                    messagebox.showerror(title="Error", message="Website and E-mail combination already exists")
+            else:
+                content.update(new_data)
+                with open("passwords.json", "w") as pw_new:
+                    json.dump(content, pw_new, indent=4)
+        except FileNotFoundError:
+            with open("passwords.json", "w") as pw:
+                json.dump(new_data, pw, indent=4)
+        except json.decoder.JSONDecodeError:
+            with open("passwords.json", "w") as pw:
+                json.dump(new_data, pw, indent=4)
+        finally:
+            website_input.delete(0, "end")
+            password_input.delete(0, "end")
+            website_input.focus()
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -61,8 +84,8 @@ username_label.grid(column=0, row=2)
 password_label = Label(text="Password:", bg="white")
 password_label.grid(column=0, row=3)
 # Text input
-website_input = Entry(width=35)
-website_input.grid(column=1, row=1, columnspan=2, sticky="EW")
+website_input = Entry(width=21)
+website_input.grid(column=1, row=1, sticky="EW")
 website_input.focus()
 username_input = Entry(width=35)
 username_input.grid(column=1, row=2, columnspan=2, sticky="EW")
@@ -74,5 +97,7 @@ password_button = Button(text="Generate Password", command=generate_password)
 password_button.grid(column=2, row=3, sticky="EW")
 add_button = Button(text="Add", width=36, command=save_password)
 add_button.grid(column=1, row=4, columnspan=2, sticky="EW")
+search_button = Button(text="Search", command=find_password)
+search_button.grid(column=2, row=1, sticky="EW")
 
 window.mainloop()
